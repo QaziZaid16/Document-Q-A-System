@@ -2,10 +2,9 @@
 
 **Smart Question-Answering for Your PDFs using RAG (Retrieval-Augmented Generation)**
 
-![Status](https://img.shields.io/badge/status-production--ready-green)
+![Status](https://img.shields.io/badge/status-active-blue)
 ![Python](https://img.shields.io/badge/python-3.13+-blue)
-![Tests](https://img.shields.io/badge/tests-100+-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage->80%25-brightgreen)
+![License](https://img.shields.io/badge/license-educational-green)
 
 ## 🎯 Overview
 
@@ -24,10 +23,10 @@ Document Q&A is an intelligent document analysis system that lets you upload PDF
 
 - ✅ **Natural Language Q&A**: Ask questions in plain English, get instant answers
 - ✅ **Source Attribution**: Every answer includes citations from your document
-- ✅ **ChatGPT-Style UI**: Modern, intuitive interface with landing state and bottom input
+- ✅ **Interactive UI**: Clean, organized interface with sidebar controls and chat history
 - ✅ **Local Processing**: All processing happens locally—your documents never leave your machine
-- ✅ **Production Ready**: >80% test coverage, comprehensive error handling, comprehensive logging
-- ✅ **Debug Visibility**: Console logs show internal pipeline stages (extraction → embedding → retrieval → generation)
+- ✅ **Error Handling**: Full error handling with Ollama status checks and graceful failures
+- ✅ **Debug Visibility**: Console logs track all pipeline stages with [DEBUG] prefixes
 
 ---
 
@@ -132,12 +131,10 @@ Task 1/
 - Guided intro for first-time users
 
 ### Chat State (After Upload)
-1. **Upload Section**: Top of page shows loaded PDF name and chunk count
-2. **Chat History**: Previous questions and answers displayed
-3. **Input Area**: Bottom input (ChatGPT style)
-   - Upload new PDF button (left)
-   - Question text input (right)
-4. **Sources**: Click "View sources" to see document chunks used for answer
+1. **Sidebar**: Upload new PDFs, view loaded PDF info, adjust retrieval settings
+2. **Chat History**: Previous questions and answers displayed in conversation view
+3. **Chat Input**: Bottom input area for typing questions
+4. **Source Attribution**: Expandable "View source chunks" shows document sections used for each answer
 
 ### Example Workflow
 ```
@@ -157,16 +154,15 @@ Sources: [Chunk 1: "Invoice Total: $15,420.50"]
 
 ### Tunable Parameters
 
-**PDF Processing** (`core/pdf_processor.py`):
+**PDF Processing** (`pdf_processor.py`):
 ```python
-CHUNK_SIZE = 500           # Words per chunk
+CHUNK_SIZE = 500           # Words per chunk (configurable in process_pdf)
 CHUNK_OVERLAP = 50         # Words of overlap between chunks
 ```
 
-**Embedding** (`core/embedder.py`):
+**Embedding** (`embedder.py`):
 ```python
 MODEL_NAME = "all-MiniLM-L6-v2"  # SentenceTransformer model
-EMBEDDING_DIMENSION = 384        # Vector size
 ```
 
 **Retrieval** (in app):
@@ -402,16 +398,16 @@ A: "Office Depot: $3,200, Staples: $2,100, Amazon Business: $1,800"
 ## 📝 Development
 
 ### Project Statistics
-- **Active Modules**: 4 core files (450+ lines)
-- **Documentation**: Comprehensive inline comments and docstrings
-- **Debug Output**: Detailed console logging for all pipeline stages
+- **Active Modules**: 4 production files (~600 lines of code)
+- **Documentation**: Extensive inline comments, docstrings, and console debug output
+- **Architecture**: RAG pipeline with PDF extraction, semantic embedding, vector retrieval, and LLM generation
 
 ### Code Quality
 - ✅ Type hints on all functions
-- ✅ Comprehensive docstrings and inline comments
-- ✅ Full error handling with Ollama status checks
-- ✅ Debug logging with [DEBUG] prefixes for easy tracking
-- ✅ Module-level documentation with pipeline explanations
+- ✅ Comprehensive docstrings explaining purpose and parameters
+- ✅ Error handling with Ollama connectivity checks
+- ✅ Debug logging with [DEBUG] prefixes for pipeline visibility
+- ✅ Section headers and inline comments for maintainability
 
 ---
 
