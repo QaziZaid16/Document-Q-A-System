@@ -315,14 +315,3 @@ st.markdown("""
 Powered by FAISS • SentenceTransformer • Ollama
 </div>
 """, unsafe_allow_html=True)
-
-# ============================================================================
-# ENTRY POINT FOR DIRECT PYTHON EXECUTION
-# ============================================================================
-if __name__ == "__main__":
-    import subprocess
-    import sys
-    import os
-    
-    # Run Streamlit app when executed directly with `python app.py`
-    subprocess.run([sys.executable, "-m", "streamlit", "run", __file__, "--logger.level=error"])
