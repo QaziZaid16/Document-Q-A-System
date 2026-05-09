@@ -55,35 +55,29 @@ User Gets Grounded Answer + Sources
 
 | Component | Purpose | Technology |
 |-----------|---------|-----------|
-| **PDF Processor** (`core/pdf_processor.py`) | Extract text, clean, chunk | PyMuPDF (fitz) |
-| **Embedder** (`core/embedder.py`) | Convert text to vectors, index | SentenceTransformer + FAISS |
-| **LLM Handler** (`core/llm_handler.py`) | Query local LLM with context | Ollama (llama3) |
+| **PDF Processor** (`pdf_processor.py`) | Extract text, clean, chunk | PyMuPDF (fitz) |
+| **Embedder** (`embedder.py`) | Convert text to vectors, index | SentenceTransformer + FAISS |
+| **LLM Handler** (`llm_handler.py`) | Query local LLM with context | Ollama (llama3) |
 | **Streamlit App** (`app.py`) | User-facing web interface | Streamlit |
 
 ---
 
-## 📁 Folder Structure
+## 📁 File Structure
 
 ```
 Task 1/
-├── core/                          # Business logic modules
-│   ├── __init__.py               # Module exports
-│   ├── pdf_processor.py          # PDF extraction & chunking
-│   ├── embedder.py               # Embedding & FAISS indexing
-│   └── llm_handler.py            # LLM querying
-│
-├── data/                          # Sample PDFs for testing/demos
-│   └── (add your sample PDFs here)
-│
-├── screenshots/                   # UI screenshots for documentation
-│   └── (add screenshots here)
-│
-├── app.py                         # Main Streamlit application
-├── test_processor.py             # Unit tests
+├── app.py                         # Main Streamlit application (with debug prints)
+├── pdf_processor.py              # PDF extraction & chunking (with detailed comments)
+├── embedder.py                   # Embedding & FAISS indexing
+├── llm_handler.py                # LLM querying & Ollama integration
 │
 ├── requirements.txt              # Python dependencies
 ├── README.md                      # This file
-└── .gitignore                     # Git ignore patterns
+├── .gitignore                     # Git ignore patterns
+│
+├── screenshots/                   # UI screenshots for documentation
+├── .git/                          # Git repository
+└── .venv/                         # Python virtual environment
 ```
 
 ---
@@ -182,25 +176,26 @@ TOP_K = 3  # Chunks to retrieve per query
 
 ---
 
-## 🧪 Testing
+### Testing & Debugging
+The project includes comprehensive debug output in the console:
 
-### Run All Tests
+1. **Console Output**: Run with `streamlit run app.py` in a terminal to see debug logs
+2. **Module Comments**: Each function in `pdf_processor.py` includes detailed docstrings
+3. **Status Tracking**: Debug prints show the pipeline: extraction → cleaning → chunking → embedding → retrieval → generation
+
+### Example Console Flow
 ```bash
-pytest --cov=core --cov-report=html
-```
-
-### Test Coverage
-- **pdf_processor.py**: 93% coverage (35+ tests)
-- **embedder.py**: 89% coverage (25+ tests)  
-- **llm_handler.py**: 91% coverage (30+ tests)
-- **app.py**: 85% coverage (10+ tests)
-- **Total**: 100+ tests, >80% coverage
-
-### Run Specific Test Suite
-```bash
-pytest test_pdf_processor.py -v
-pytest test_embedder.py -v
-pytest test_llm_handler.py -v
+$ streamlit run app.py
+======================================================================
+STREAMLIT APP INITIALIZED
+======================================================================
+[DEBUG] Page configuration set
+[DEBUG] Session: 'index' initialized to None
+[DEBUG] Session: 'chunks' initialized to None
+[DEBUG] Session: 'pdf_name' initialized to None
+[DEBUG] Session: 'chat_history' initialized to empty list
+[DEBUG] Checking Ollama status...
+[DEBUG] Ollama is running - proceeding with app
 ```
 
 ---
@@ -209,7 +204,7 @@ pytest test_llm_handler.py -v
 
 ### Step 1: PDF Extraction
 ```python
-from core import process_pdf
+from pdf_processor import process_pdf
 
 chunks = process_pdf("invoice.pdf")
 # Extracts text, cleans whitespace, splits into overlapping chunks
@@ -217,29 +212,39 @@ chunks = process_pdf("invoice.pdf")
 
 **Debug Output Example:**
 ```
-[PDF Processor] ✓ PDF loaded: invoice.pdf (3 pages)
-[PDF Processor] ✓ Text extracted: 5400 characters
-[PDF Processor] ✓ Created 12 overlapping chunks
+======================================================================
+PDF PROCESSING STARTED
+File: invoice.pdf
+======================================================================
+  [DEBUG] PDF opened successfully. Total pages: 3
+  [DEBUG] Page 1: 1850 characters extracted
+  [DEBUG] Page 2: 2100 characters extracted
+  [DEBUG] Page 3: 1450 characters extracted
+  [DEBUG] Total extracted text: 5400 characters
+  [DEBUG] Input text length: 5400 characters
+  [DEBUG] After cleaning: 5200 characters
+  [DEBUG] Total words: 850
+  [DEBUG] Chunk 1: words 0-500 (500 words)
+  [DEBUG] Chunk 2: words 450-950 (500 words)
+  [DEBUG] Total chunks created: 2
+======================================================================
+PDF PROCESSING COMPLETE
+Result: 2 chunks from 850 total words
+Average chunk size: 425 words
+======================================================================
 ```
 
 ### Step 2: Embedding & Indexing
 ```python
-from core import build_or_load_index
+from embedder import build_or_load_index
 
 index, chunks = build_or_load_index(chunks, "index_invoice.pdf")
 # Converts chunks to vectors, creates FAISS index, caches for reuse
 ```
 
-**Debug Output Example:**
-```
-[Embedder] ⏳ Loading model: all-MiniLM-L6-v2
-[Embedder] ✓ Embedded 12 chunks (384-dim vectors)
-[Embedder] ✓ FAISS index built and cached
-```
-
-### Step 3: Query Retrieval
+### Step 3: Query Retrieval & Answer Generation
 ```python
-from core import retrieve_relevant_chunks
+from app import retrieve_relevant_chunks, get_answer
 
 relevant = retrieve_relevant_chunks(
     query="What was the total amount?",
@@ -247,30 +252,21 @@ relevant = retrieve_relevant_chunks(
     chunks=chunks,
     top_k=3
 )
-```
-
-**Debug Output Example:**
-```
-[Embedder] 🔍 Embedded query: 384-dim vector
-[Embedder] 🔍 L2 distances: [0.42, 0.58, 0.71]
-[Embedder] 🔍 Retrieved 3 chunks
-```
-
-### Step 4: LLM Generation
-```python
-from core import get_answer
 
 result = get_answer(
     question="What was the total amount?",
     context_chunks=relevant
 )
-# Returns: {"answer": "...", "sources": [...]}
 ```
 
-**Debug Output Example:**
+**Console Debug Output** (visible in terminal when running app):
 ```
-[LLM Handler] 🧠 Querying Ollama with context...
-[LLM Handler] ✓ Got answer: "$15,420.50"
+[DEBUG] User question submitted: What was the total amount?
+[DEBUG] Retrieving relevant chunks (top_k=3)...
+[DEBUG] Retrieved 2 relevant chunks
+[DEBUG] Sending to LLM for answer generation...
+[DEBUG] LLM answer generated: 245 characters
+[DEBUG] Message saved to chat history (total: 1)
 ```
 
 ---
@@ -367,7 +363,7 @@ streamlit run app.py
 ollama pull llama3
 ```
 
-### "Import error: No module named 'core'"
+### "Import error: No module named 'pdf_processor'"
 ```bash
 # Make sure you're in the Task 1 directory
 cd "Task 1"
@@ -378,7 +374,7 @@ streamlit run app.py
 ```bash
 # Use smaller model
 ollama pull mistral
-# Update: MODEL_NAME = "mistral" in core/llm_handler.py
+# Update: MODEL_NAME = "mistral" in llm_handler.py
 ```
 
 ---
@@ -406,16 +402,16 @@ A: "Office Depot: $3,200, Staples: $2,100, Amazon Business: $1,800"
 ## 📝 Development
 
 ### Project Statistics
-- **Lines of Code**: 1000+ (core + tests)
-- **Test Cases**: 100+
-- **Coverage**: >80% all modules
-- **Documentation**: 3000+ lines
+- **Active Modules**: 4 core files (450+ lines)
+- **Documentation**: Comprehensive inline comments and docstrings
+- **Debug Output**: Detailed console logging for all pipeline stages
 
 ### Code Quality
 - ✅ Type hints on all functions
-- ✅ Comprehensive docstrings
-- ✅ Full error handling
-- ✅ Debug logging with [Module] prefixes
+- ✅ Comprehensive docstrings and inline comments
+- ✅ Full error handling with Ollama status checks
+- ✅ Debug logging with [DEBUG] prefixes for easy tracking
+- ✅ Module-level documentation with pipeline explanations
 
 ---
 

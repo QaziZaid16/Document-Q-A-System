@@ -1,317 +1,244 @@
-# ============================================================================
-# app.py - Document Q&A Streamlit Application
-# ============================================================================
-# Purpose: Modern web UI for document question-answering using RAG pipeline.
-#          Modeled after ChatGPT UX for familiar user experience.
-#
-# Architecture:
-#   - Landing state: Upload-focused until document loaded
-#   - Chat state: Full Q&A interface after document loaded
-#   - Bottom input: File upload + text input in same row (ChatGPT style)
-#
-# ============================================================================
+"""Streamlit Web Interface for Document Q&A System
+
+This module provides the user-facing web interface for the RAG (Retrieval-Augmented
+Generation) document Q&A system. It handles:
+- PDF upload and processing
+- User question input
+- Answer retrieval and display
+- Chat history management
+"""
 
 import streamlit as st
 import tempfile
 import os
-from core.pdf_processor import process_pdf        
-from core.embedder import build_or_load_index, retrieve_relevant_chunks 
-from core.llm_handler import get_answer, check_ollama_status      
+from pdf_processor import process_pdf        
+from embedder import build_or_load_index, retrieve_relevant_chunks 
+from llm_handler import get_answer, check_ollama_status      
+
+print("\n" + "="*70)
+print("STREAMLIT APP INITIALIZED")
+print("="*70)
 
 # ============================================================================
-# PAGE CONFIGURATION & STYLING
+# PAGE CONFIGURATION
 # ============================================================================
-print("[APP] Configuring Streamlit page...")
+
+# Configure the Streamlit page with title, icon, and layout settings
 st.set_page_config(
-    page_title="Document Q&A",
-    page_icon="📄",
-    layout="centered",
-    initial_sidebar_state="collapsed"
+    page_title="Document Q&A",  
+    page_icon="📄",            
+    layout="wide"               
 )
-
-# Custom CSS for modern ChatGPT-like appearance
-st.markdown("""
-<style>
-    /* Main container centered with max width */
-    .main {
-        max-width: 900px;
-        margin: 0 auto;
-    }
-    
-    /* Hide default streamlit elements */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    
-    /* Chat styling */
-    .chat-container {
-        background: #fff;
-        border-radius: 8px;
-        padding: 20px;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-print("[APP] ✓ Page configured")
+print("[DEBUG] Page configuration set")
 
 # ============================================================================
 # SESSION STATE INITIALIZATION
 # ============================================================================
-print("[APP] Initializing session state...")
+
+# Initialize session state variables that persist across reruns
+# This allows data to survive when Streamlit reruns the script
 
 if "index" not in st.session_state:
     st.session_state.index = None
-    print("[APP] Initialized: index = None")
+    print("[DEBUG] Session: 'index' initialized to None")
 
 if "chunks" not in st.session_state:
     st.session_state.chunks = None
-    print("[APP] Initialized: chunks = None")
+    print("[DEBUG] Session: 'chunks' initialized to None")
 
 if "pdf_name" not in st.session_state:
     st.session_state.pdf_name = None
-    print("[APP] Initialized: pdf_name = None")
+    print("[DEBUG] Session: 'pdf_name' initialized to None")
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
-    print("[APP] Initialized: chat_history = []")
-
-if "processing" not in st.session_state:
-    st.session_state.processing = False
-    print("[APP] Initialized: processing = False")
-
-print("[APP] ✓ Session state ready")
+    print("[DEBUG] Session: 'chat_history' initialized to empty list")
 
 # ============================================================================
-# HEALTH CHECK
+# MAIN PAGE TITLE AND INSTRUCTIONS
 # ============================================================================
-print("[APP] Checking Ollama status...")
-ollama_healthy = check_ollama_status()
-if not ollama_healthy:
-    st.error(
-        "⚠️ **Ollama not running**\n\n"
-        "Please start Ollama first:\n"
-        "```bash\nollama serve\n```"
+
+st.title("📄 Document Q&A")
+st.caption("Upload a PDF and ask questions about its content. Answers are grounded in the document.")
+
+# ============================================================================
+# DEPENDENCY CHECK: ENSURE OLLAMA IS RUNNING
+# ============================================================================
+
+# Before proceeding, verify that Ollama LLM service is available
+print("[DEBUG] Checking Ollama status...")
+if not check_ollama_status():
+    print("[WARNING] Ollama is not running!")
+    st.warning(
+        "⚠️ Ollama is not running. Start it with `ollama serve` in your terminal, "
+        "then refresh this page."
     )
     st.stop()
-print("[APP] ✓ Ollama healthy")
+
+print("[DEBUG] Ollama is running - proceeding with app")
 
 # ============================================================================
-# LANDING STATE (Before upload)
+# SIDEBAR: PDF UPLOAD AND PROCESSING
 # ============================================================================
-if st.session_state.index is None:
-    print("[APP] Showing landing state (no document loaded)")
-    
-    # Header
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("# 📄 Document Q&A")
-        st.markdown("### Chat with your PDFs")
-        st.markdown("")
 
-    # Feature highlight
-    st.markdown("""
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px; color: white;">
-    
-    ✨ **Smart Document Analysis**
-    - Upload any PDF
-    - Ask natural language questions
-    - Get instant answers from your documents
-    - See source citations
-    
-    </div>
-    """, unsafe_allow_html=True)
+with st.sidebar:
+    st.header("📂 Upload Document")
+    print("[DEBUG] Rendering sidebar PDF upload section")
 
-    st.markdown("---")
-
-    # Demo use case
-    st.markdown("""
-    **📋 Example Use Case:**
-    
-    *Retail Store Manager Workflow*
-    1. Upload invoice PDF or product catalog
-    2. Ask: "What was the total spend in Q1?"
-    3. Get instant answer with source reference
-    4. No more manual document scanning!
-    """)
-
-    st.markdown("---")
-
-    # Upload section
-    st.markdown("### 🚀 Get Started")
-    
     uploaded_file = st.file_uploader(
-        "Upload a PDF document",
-        type=["pdf"],
-        help="Any PDF file - invoices, reports, documentation, etc.",
-        key="landing_uploader"
+        label="Choose a PDF file",
+        type=["pdf"],   
+        help="Upload the PDF document you want to query."
     )
     
-    if uploaded_file:
-        print(f"[APP] File selected: {uploaded_file.name}")
-        st.session_state.processing = True
-
-        with st.spinner("⏳ Processing document... (extracting → embedding → indexing)"):
-            try:
-                print(f"[APP] Starting PDF processing pipeline for: {uploaded_file.name}")
+    if uploaded_file is not None:
+        print(f"[DEBUG] PDF file selected: {uploaded_file.name} ({uploaded_file.size} bytes)")
+        st.success(f"✅ File: {uploaded_file.name}")
+        size_kb = uploaded_file.size / 1024
+        st.caption(f"Size: {size_kb:.1f} KB")
+        
+        # PROCESS PDF BUTTON
+        # When clicked, this extracts text, cleans it, chunks it, embeds it, and builds a FAISS index
+        if st.button("🔄 Process PDF", use_container_width=True):
+            print(f"[DEBUG] Processing PDF: {uploaded_file.name}")
+            with st.spinner("Processing PDF... this may take a minute."):
+                # Create temporary file to store the uploaded PDF
+                with tempfile.NamedTemporaryFile(
+                    delete=False, suffix=".pdf"
+                ) as tmp_file:
+                    tmp_file.write(uploaded_file.read())
+                    tmp_path = tmp_file.name
+                print(f"[DEBUG] Temporary PDF saved to: {tmp_path}")
                 
-                # Step 1: Save to temp
-                print(f"[APP] Saving file to temporary location...")
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-                    tmp.write(uploaded_file.read())
-                    tmp_path = tmp.name
-                print(f"[APP] ✓ Temp file: {tmp_path}")
-
-                # Step 2: Process PDF
-                print(f"[APP] Processing PDF...")
+                # Step 1: Extract and process PDF into chunks
+                print("[DEBUG] Calling process_pdf()...")
                 chunks = process_pdf(tmp_path)
-                print(f"[APP] ✓ PDF processed. {len(chunks)} chunks created")
-
-                # Step 3: Build/load index
-                print(f"[APP] Building/loading index...")
+                print(f"[DEBUG] PDF processing complete: {len(chunks)} chunks created")
+                
+                # Step 2: Build or load FAISS index
+                print("[DEBUG] Building/loading FAISS index...")
                 index, chunks = build_or_load_index(
                     chunks,
                     index_path=f"index_{uploaded_file.name}"
                 )
-                print(f"[APP] ✓ Index ready")
-
-                # Step 4: Save to session
+                print(f"[DEBUG] FAISS index ready with {len(chunks)} chunks")
+                
+                # Store results in session state (survives across reruns)
                 st.session_state.index = index
                 st.session_state.chunks = chunks
                 st.session_state.pdf_name = uploaded_file.name
-                st.session_state.chat_history = []
-                print(f"[APP] ✓ Session state updated")
-
-                # Cleanup
+                st.session_state.chat_history = []  # Reset chat history for new PDF
+                
+                # Clean up temporary file
                 os.unlink(tmp_path)
-                print(f"[APP] ✓ Temp file cleaned")
+                print("[DEBUG] Temporary file deleted")
 
-                st.session_state.processing = False
-                st.success(f"✅ **{uploaded_file.name}** ready!\n\nStart asking questions →")
-                st.rerun()
+            st.success("✅ PDF processed! Ask your questions →")
 
-            except Exception as e:
-                print(f"[APP] ❌ Error: {e}")
-                st.session_state.processing = False
-                st.error(f"❌ Error processing PDF: {str(e)}")
+    # Display current loaded PDF info
+    if st.session_state.pdf_name:
+        st.divider()
+        print(f"[DEBUG] Current PDF loaded: {st.session_state.pdf_name}")
+        st.caption(f"📄 Loaded: **{st.session_state.pdf_name}**")
+        st.caption(f"📦 Chunks: {len(st.session_state.chunks)}")
+
+    # ========================================================================
+    # SIDEBAR: SETTINGS
+    # ========================================================================
+    
+    st.divider()
+    st.header("⚙️ Settings")
+    
+    # Control how many chunks are retrieved for each query
+    top_k = st.slider(
+        label="Chunks to retrieve",
+        min_value=1,
+        max_value=6,
+        value=3,
+        help="How many document chunks to send to the LLM. More = more context but slower."
+    )
+    print(f"[DEBUG] top_k setting: {top_k}")
 
 # ============================================================================
-# CHAT STATE (After upload)
+# MAIN CONTENT AREA: CHAT INTERFACE
 # ============================================================================
+
+if st.session_state.index is None:
+    # No PDF loaded yet - show instructions
+    print("[DEBUG] No PDF loaded - showing startup message")
+    st.info("👈 Upload and process a PDF from the sidebar to get started.")
+
 else:
-    print("[APP] Showing chat interface")
+    print("[DEBUG] PDF loaded - rendering chat interface")
     
-    # Header with document info
-    col1, col2, col3 = st.columns([1, 3, 1])
-    with col1:
-        st.markdown("# 📄")
-    with col2:
-        st.markdown(f"### Chatting with: **{st.session_state.pdf_name}**")
-        st.caption(f"📊 {len(st.session_state.chunks)} chunks | Ready to answer questions")
-    with col3:
-        if st.button("📁 Upload New", help="Upload a different PDF"):
-            st.session_state.index = None
-            st.session_state.chunks = None
-            st.session_state.pdf_name = None
-            st.session_state.chat_history = []
-            print("[APP] Reset state for new upload")
-            st.rerun()
+    # DISPLAY CHAT HISTORY
+    # Shows all previous questions and answers from this session
+    print(f"[DEBUG] Displaying {len(st.session_state.chat_history)} messages from chat history")
+    for msg_idx, exchange in enumerate(st.session_state.chat_history):
+        print(f"[DEBUG] Displaying message {msg_idx + 1}: {exchange['question'][:50]}...")
+        
+        # User message
+        with st.chat_message("user"):
+            st.write(exchange["question"])
 
-    st.markdown("---")
-
-    # Chat history
-    chat_container = st.container()
-    with chat_container:
-        for i, exchange in enumerate(st.session_state.chat_history):
-            # User message
-            st.markdown(f"**You:** {exchange['question']}")
-            
-            # Assistant message
-            st.markdown(f"**Assistant:** {exchange['answer']}")
-            
-            # Sources
-            with st.expander("📚 View sources"):
-                for j, chunk in enumerate(exchange['sources'], 1):
-                    st.markdown(f"**Source {j}:**")
-                    st.text(chunk[:300] + "..." if len(chunk) > 300 else chunk)
-                    if j < len(exchange['sources']):
+        # Assistant message and source chunks
+        with st.chat_message("assistant"):
+            st.write(exchange["answer"])
+            with st.expander("📚 View source chunks"):
+                for i, chunk in enumerate(exchange["sources"]):
+                    st.markdown(f"**Source {i+1}:**")
+                    st.text(chunk[:400] + "..." if len(chunk) > 400 else chunk)
+                    if i < len(exchange["sources"]) - 1:
                         st.divider()
-            
-            st.divider()
 
-    # Input area (ChatGPT style - bottom)
-    st.markdown("---")
-    
-    # Input with upload button
-    col1, col2 = st.columns([0.15, 0.85])
-    
-    with col1:
-        st.markdown("### 📎")
-        if st.button("📁", key="upload_new_btn", help="Upload different PDF"):
-            st.session_state.index = None
-            st.session_state.chunks = None
-            st.session_state.pdf_name = None
-            st.session_state.chat_history = []
-            print("[APP] Reset for new document")
-            st.rerun()
-    
-    with col2:
-        # Use form to handle submission properly
-        with st.form(key="question_form", clear_on_submit=True):
-            question = st.text_input(
-                "Ask a question about your document...",
-                placeholder="e.g., What was the total amount? Who is the vendor?",
-                label_visibility="collapsed"
-            )
-            submitted = st.form_submit_button("Send", use_container_width=True)
+    # INPUT: USER QUESTION
+    # Chat input field that triggers on Enter or custom submit
+    question = st.chat_input("Ask a question about your document...")
 
-    # Process question only if form was submitted
-    if submitted and question:
-        print(f"[APP] Question submitted: {question[:60]}...")
+    if question:
+        print(f"[DEBUG] User question submitted: {question[:50]}...")
         
-        st.session_state.chat_history.append({
-            "question": question,
-            "answer": "⏳ Thinking...",
-            "sources": []
-        })
-        
-        # Show thinking
-        with st.spinner("⏳ Processing question... (retrieving → generating answer)"):
-            try:
-                print(f"[APP] Retrieving relevant chunks...")
-                # Dynamically set top_k: use min of (3, available chunks)
-                top_k = min(3, len(st.session_state.chunks))
+        # Display user message immediately
+        with st.chat_message("user"):
+            st.write(question)
+
+        # Process question and display answer
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                print(f"[DEBUG] Retrieving relevant chunks (top_k={top_k})...")
+                
+                # STEP 1: RETRIEVAL - Find most relevant chunks using FAISS
                 relevant_chunks = retrieve_relevant_chunks(
                     query=question,
                     index=st.session_state.index,
                     chunks=st.session_state.chunks,
-                    top_k=top_k
+                    top_k=top_k   
                 )
-                print(f"[APP] ✓ Retrieved {len(relevant_chunks)} chunks")
-
-                print(f"[APP] Querying LLM...")
+                print(f"[DEBUG] Retrieved {len(relevant_chunks)} relevant chunks")
+                
+                # STEP 2: GENERATION - Send context + question to LLM
+                print("[DEBUG] Sending to LLM for answer generation...")
                 result = get_answer(
                     question=question,
                     context_chunks=relevant_chunks
                 )
-                print(f"[APP] ✓ Got answer")
+                print(f"[DEBUG] LLM answer generated: {len(result['answer'])} characters")
 
-                # Update chat history
-                st.session_state.chat_history[-1]["answer"] = result["answer"]
-                st.session_state.chat_history[-1]["sources"] = result["sources"]
-                print(f"[APP] ✓ Chat history updated")
+            # Display the generated answer
+            st.write(result["answer"])
 
-            except Exception as e:
-                print(f"[APP] ❌ Error: {e}")
-                st.session_state.chat_history[-1]["answer"] = f"❌ Error: {str(e)}"
+            # Show which chunks were used (source attribution)
+            with st.expander("📚 View source chunks"):
+                for i, chunk in enumerate(result["sources"]):
+                    st.markdown(f"**Source {i+1}:**")
+                    st.text(chunk[:400] + "..." if len(chunk) > 400 else chunk)
+                    if i < len(result["sources"]) - 1:
+                        st.divider()
 
-        st.rerun()
-
-# ============================================================================
-# FOOTER
-# ============================================================================
-st.markdown("---")
-st.markdown("""
-<div style="text-align: center; color: #888; font-size: 12px; padding: 20px;">
-🔐 Your documents are processed locally. No data sent to external servers.<br>
-Powered by FAISS • SentenceTransformer • Ollama
-</div>
-""", unsafe_allow_html=True)
+        # Save to chat history for this session
+        st.session_state.chat_history.append({
+            "question": question,
+            "answer": result["answer"],
+            "sources": result["sources"]
+        })
+        print(f"[DEBUG] Message saved to chat history (total: {len(st.session_state.chat_history)})")
