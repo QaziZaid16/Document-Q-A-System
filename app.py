@@ -274,11 +274,13 @@ else:
         with st.spinner("⏳ Processing question... (retrieving → generating answer)"):
             try:
                 print(f"[APP] Retrieving relevant chunks...")
+                # Dynamically set top_k: use min of (3, available chunks)
+                top_k = min(3, len(st.session_state.chunks))
                 relevant_chunks = retrieve_relevant_chunks(
                     query=question,
                     index=st.session_state.index,
                     chunks=st.session_state.chunks,
-                    top_k=3
+                    top_k=top_k
                 )
                 print(f"[APP] ✓ Retrieved {len(relevant_chunks)} chunks")
 
