@@ -254,14 +254,17 @@ else:
             st.rerun()
     
     with col2:
-        question = st.text_input(
-            "Ask a question about your document...",
-            placeholder="e.g., What was the total amount? Who is the vendor?",
-            label_visibility="collapsed"
-        )
+        # Use form to handle submission properly
+        with st.form(key="question_form", clear_on_submit=True):
+            question = st.text_input(
+                "Ask a question about your document...",
+                placeholder="e.g., What was the total amount? Who is the vendor?",
+                label_visibility="collapsed"
+            )
+            submitted = st.form_submit_button("Send", use_container_width=True)
 
-    # Process question
-    if question:
+    # Process question only if form was submitted
+    if submitted and question:
         print(f"[APP] Question submitted: {question[:60]}...")
         
         st.session_state.chat_history.append({
