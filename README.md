@@ -74,7 +74,6 @@ Task 1/
 ├── README.md                      # This file
 ├── .gitignore                     # Git ignore patterns
 │
-├── screenshots/                   # UI screenshots for documentation
 ├── .git/                          # Git repository
 └── .venv/                         # Python virtual environment
 ```
