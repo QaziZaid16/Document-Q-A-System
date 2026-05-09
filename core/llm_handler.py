@@ -1,14 +1,14 @@
-# ============================================================================
-# llm_handler.py - LLM Interface & Prompt Management
-# ============================================================================
-# Purpose: Query the Ollama LLM with context from retrieved documents.
-#          This is the final step of the RAG pipeline.
-#
-# Architecture:
-#   - format_prompt: Inject context into a structured prompt template
-#   - query_ollama: Send prompt to LLM and get response
-#   - get_answer: Orchestrate the full pipeline
-# ============================================================================
+"""
+llm_handler.py - LLM Interface & Prompt Management
+================================================
+Purpose: Query the Ollama LLM with context from retrieved documents.
+         This is the final step of the RAG pipeline.
+
+Architecture:
+  - format_prompt: Inject context into a structured prompt template
+  - query_ollama: Send prompt to LLM and get response
+  - get_answer: Orchestrate the full pipeline
+"""
 
 import requests
 import json
@@ -116,7 +116,7 @@ def query_ollama(prompt: str, temperature: float = 0.1) -> str:
         }
     }
     
-    print(f"[LLM Handler] Querying Ollama ({MODEL_NAME})...")
+    print(f"[LLM Handler] 🧠 Querying Ollama ({MODEL_NAME})...")
     print(f"[LLM Handler] Temperature: {temperature}, Max tokens: 512")
     
     try:
@@ -289,4 +289,4 @@ def list_available_models() -> List[str]:
         
     except Exception as e:
         print(f"[LLM Handler] ❌ Error listing models: {e}")
-        return []   
+        return []

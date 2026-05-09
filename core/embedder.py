@@ -66,7 +66,7 @@ def embed_chunks(chunks: List[str]) -> np.ndarray:
     if not all(isinstance(c, str) for c in chunks):
         raise TypeError("All chunks must be strings")
     
-    print(f"[Embedder] Embedding {len(chunks)} chunks using {MODEL_NAME}...")
+    print(f"[Embedder] ⏳ Embedding {len(chunks)} chunks using {MODEL_NAME}...")
     
     try:
         # === ENCODE CHUNKS INTO VECTORS ===
@@ -273,7 +273,7 @@ def retrieve_relevant_chunks(
     if len(chunks) == 0:
         raise ValueError("Cannot retrieve from empty chunks list")
     
-    print(f"[Embedder] Retrieving top {top_k} chunks for query: '{query[:50]}...'")
+    print(f"[Embedder] 🔍 Retrieving top {top_k} chunks for query: '{query[:50]}...'")
     
     try:
         # === EMBED QUERY ===
