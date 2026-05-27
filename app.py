@@ -31,6 +31,59 @@ st.set_page_config(
 )
 print("[DEBUG] Page configuration set")
 
+# Inject custom CSS to create a sleek, minimal, dark UI without changing behavior
+# Keep styles lightweight and resilient to Streamlit class name changes by targeting
+# high-level elements and common IDs. This only affects appearance.
+_custom_css = r"""
+<style>
+/* App background and global font color */
+html, body, .stApp {
+    background: #0b1115 !important;
+    color: #e6eef2 !important;
+}
+
+/* Hide Streamlit default menu and footer for a cleaner demo look */
+#MainMenu {visibility: hidden;} 
+footer {visibility: hidden;}
+
+/* Make main content container slightly narrower and centered */
+.block-container {
+    padding-top: 1.2rem !important;
+    padding-left: 2.5rem !important;
+    padding-right: 2.5rem !important;
+}
+
+/* Buttons and inputs: subtle rounded style */
+button, .stButton>button {
+    border-radius: 10px !important;
+    background-color: #0ea5a1 !important;
+    color: #051019 !important;
+    border: none !important;
+}
+
+/* Chat card look for message containers (best-effort selectors) */
+.stChatMessage, .stChatMessage>* {
+    background: transparent !important;
+}
+
+/* A minimal centered header card */
+.doc-card {
+    max-width: 980px;
+    margin: 0 auto 18px auto;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border: 1px solid rgba(255,255,255,0.04);
+    padding: 18px 20px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(2,6,23,0.7);
+}
+
+/* Sidebar tweaks to make it compact */
+.css-1d391kg { padding-top: 12px; }
+
+</style>
+"""
+st.markdown(_custom_css, unsafe_allow_html=True)
+
 # ============================================================================
 # SESSION STATE INITIALIZATION
 # ============================================================================
@@ -60,6 +113,23 @@ if "chat_history" not in st.session_state:
 
 st.title("📄 Document Q&A")
 st.caption("Upload a PDF and ask questions about its content. Answers are grounded in the document.")
+
+# Small, centered header card to give a sleek, minimal landing appearance
+_header_html = r"""
+<div class="doc-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div>
+            <div style="font-size:18px;font-weight:600;color:#e6eef2">Document Q&A — Ask natural language questions about PDFs</div>
+            <div style="margin-top:6px;color:#9fb4bf;font-size:13px">Upload a PDF (sidebar) and ask focused questions. Answers reference document passages.</div>
+        </div>
+        <div style="display:flex;gap:8px">
+            <div style="background:#071018;color:#0ea5a1;padding:6px 10px;border-radius:8px;font-weight:600">Upload</div>
+            <div style="background:transparent;border:1px solid rgba(255,255,255,0.04);color:#9fb4bf;padding:6px 10px;border-radius:8px">Interactive</div>
+        </div>
+    </div>
+</div>
+"""
+st.markdown(_header_html, unsafe_allow_html=True)
 
 # ============================================================================
 # DEPENDENCY CHECK: ENSURE OLLAMA IS RUNNING
