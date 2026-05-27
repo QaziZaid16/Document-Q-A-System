@@ -84,6 +84,83 @@ button, .stButton>button {
 """
 st.markdown(_custom_css, unsafe_allow_html=True)
 
+# Additional UI chrome to more closely match the reference layout
+_more_css = r"""
+<style>
+/* Make the Streamlit sidebar resemble a left navigation pane */
+.stSidebar {
+    background: linear-gradient(180deg,#0a0f12,#0b1115) !important;
+    border-right: 1px solid rgba(255,255,255,0.03) !important;
+    padding-top: 18px !important;
+    width: 240px !important;
+}
+
+/* Central content area - large rounded panel to mimic the chat canvas */
+.main > div[role="main"] > div:nth-child(1) {
+    max-width: 1100px !important;
+    margin: 0 auto !important;
+}
+
+.css-1gkcyyc { /* chat container heuristics */
+    background: rgba(255,255,255,0.01) !important;
+    border: 1px solid rgba(255,255,255,0.03) !important;
+    border-radius: 14px !important;
+    padding: 22px !important;
+    box-shadow: 0 10px 30px rgba(2,6,23,0.6) !important;
+}
+
+/* Chat input styling (best-effort) */
+.stChatInput>div, .stTextInput>div > input {
+    background: rgba(255,255,255,0.02) !important;
+    border-radius: 999px !important;
+    padding: 12px 16px !important;
+    border: 1px solid rgba(255,255,255,0.04) !important;
+    color: #cfecee !important;
+}
+
+/* Make the right tools panel fixed and visually match the reference; purely cosmetic */
+.right-tools-panel {
+    position: fixed;
+    right: 18px;
+    top: 72px;
+    width: 260px;
+    height: calc(100% - 140px);
+    background: linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01));
+    border-left: 1px solid rgba(255,255,255,0.03);
+    border-radius: 10px;
+    padding: 14px;
+    overflow: auto;
+    box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+    z-index: 9999;
+}
+
+.right-tools-panel h4 { margin: 6px 0 10px 0; color:#d6f6f2; }
+.right-tools-panel .tool { padding:8px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.01);border:1px solid rgba(255,255,255,0.02);}
+
+/* Small responsive tweaks */
+@media (max-width: 900px) {
+    .right-tools-panel { display:none }
+    .stSidebar { display:none }
+}
+
+</style>
+"""
+st.markdown(_more_css, unsafe_allow_html=True)
+
+# Visual-only right-side tools panel (non-functional UI elements for demo look)
+_right_panel_html = r"""
+<div class="right-tools-panel">
+    <h4>Tools</h4>
+    <div class="tool"><strong>Python Runner</strong><div style="color:#9fb4bf;font-size:12px">Execute code in sandbox</div></div>
+    <div class="tool"><strong>Calculator</strong><div style="color:#9fb4bf;font-size:12px">Performs calculations</div></div>
+    <div class="tool"><strong>Web Search</strong><div style="color:#9fb4bf;font-size:12px">(disabled)</div></div>
+    <hr style="border-color:rgba(255,255,255,0.03);margin:10px 0" />
+    <h4>Files</h4>
+    <div class="tool"><strong>Uploaded PDFs</strong><div style="color:#9fb4bf;font-size:12px">Shows cached indexes</div></div>
+</div>
+"""
+st.markdown(_right_panel_html, unsafe_allow_html=True)
+
 # ============================================================================
 # SESSION STATE INITIALIZATION
 # ============================================================================
